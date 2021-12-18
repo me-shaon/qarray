@@ -1,30 +1,43 @@
 name: Test
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
   tests:
     strategy:
       matrix:
-        php-versions: [ '5.6', '7.0', '7.1', '7.2', '7.3', '7.4', '8.0', '8.1' ]
+        php-versions: [ '5.6', '7.0', '7.1', '7.2', '7.3', '7.4' ]
       fail-fast: false
 
     runs-on: ubuntu-latest
 
     steps:
-      - name: "Checkout latest revision"
+      - name: Checkout latest revision
         uses: actions/checkout@v2
 
-      - name: "Install PHP with extensions"
+      - name: Install PHP with extensions
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
 
-      - name: "Install composer"
-        run: curl --show-error --silent https://getcomposer.org/installer | php
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
 
-      - name: "Install package dependencies"
-        run: php composer.phar install
+      - name: Cache Composer packages
+        id: composer-cachez
+        uses: actions/cache@v2
+        with:
+            path: vendor
+            key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+            restore-keys: |
+              ${{ runner.os }}-php-
 
-      - name: "Run PHPUnit tests"
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit
